@@ -11,6 +11,8 @@ const documentClient = new DynamoDB.DocumentClient({
 });
 
 const CERTIFICATE_TABLE_NAME = process.env.DB_CERTIFICATE_TABLE;
+const DB_CERTIFICATE_TABLE_EMAIL_INDEX =
+  process.env.DB_CERTIFICATE_TABLE_EMAIL_INDEX;
 
 /**
  *
@@ -39,6 +41,43 @@ module.exports.createCertificate = async (event, context) => {
     await documentClient.put(certificateDocument).promise();
 
     return createResponse(201, data);
+  } catch (err) {
+    console.log(err);
+    err.message = err.message || 'Failed to create certificate';
+    return createErrorResponse(err.statusCode, err);
+  }
+};
+
+/**
+ *
+ * @param {import('aws-lambda').APIGatewayProxyEventV2} event
+ * @param {import('aws-lambda').Context} context
+ */
+module.exports.getCertificates = async (event, context) => {
+  const userEmail = event.queryStringParameters.email;
+  if (!userEmail) {
+    console.log('No email provided in getCertificates');
+    return createErrorResponse(err.statusCode, {
+      message: 'email is required',
+      requestId: context.awsRequestId,
+    });
+  }
+
+  const certificateQueryParam = {
+    TableName: CERTIFICATE_TABLE_NAME,
+    IndexName: DB_CERTIFICATE_TABLE_EMAIL_INDEX,
+    KeyConditionExpression: 'user_email = :userEmail',
+    ExpressionAttributeValues: {
+      ':userEmail': userEmail,
+    },
+  };
+
+  try {
+    const certificates = await documentClient
+      .query(certificateQueryParam)
+      .promise();
+
+    return createResponse(200, certificates.Items);
   } catch (err) {
     console.log(err);
     err.message = err.message || 'Failed to create certificate';

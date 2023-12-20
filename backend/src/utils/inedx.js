@@ -1,3 +1,9 @@
+const DEFAULT_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Credentials': true,
+  'Content-Type': 'application/json',
+};
+
 /**
  *
  * @param {number} statusCode
@@ -10,8 +16,7 @@ module.exports.createResponse = (statusCode, data, overrides) => {
     statusCode,
     body: JSON.stringify(data),
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Type': 'application/json',
+      ...DEFAULT_HEADERS,
       ...overrides?.headers,
     },
   };
@@ -33,8 +38,7 @@ module.exports.createErrorResponse = (statusCode, errorData, overrides) => {
       requestId: errorData.requestId,
     }),
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Type': 'application/json',
+      ...DEFAULT_HEADERS,
       ...overrides?.headers,
     },
   };

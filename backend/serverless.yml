@@ -10,16 +10,37 @@ provider:
   memorySize: 512
   environment:
     DB_CERTIFICATE_TABLE: !Ref certificateTable
-
+    DB_CERTIFICATE_TABLE_EMAIL_INDEX: certificatesEmailIndex
 
 custom:
   database:
-    certificateTable: ${self:service}-users-${self:provider.stage}
-
+    certificateTable: ${self:service}-certificates-${self:provider.stage}
 
 plugins:
   - serverless-iam-roles-per-function
 
+resources:
+  Resources:
+    certificateTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.database.certificateTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: certificate_id
+            AttributeType: S
+          - AttributeName: user_email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: certificate_id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.DB_CERTIFICATE_TABLE_EMAIL_INDEX}
+            KeySchema:
+              - AttributeName: user_email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
 
 functions:
   createCertificate:
@@ -36,18 +57,28 @@ functions:
           method: post
           cors: true
           path: /v1/certificate
-
-
-resources:
-  Resources:
-    certificateTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:custom.database.certificateTable}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: certificate_id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: certificate_id
-            KeyType: HASH
+  getCertificates:
+    handler: src/functions/certificates/index.getCertificates
+    environment:
+      AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "dynamodb:Query"
+        Resource:
+          - {
+              "Fn::Join":
+                [
+                  "/",
+                  [
+                    { "Fn::GetAtt": ["certificateTable", "Arn"] },
+                    "index",
+                    "certificatesEmailIndex",
+                  ],
+                ],
+            }
+    events:
+      - http:
+          method: get
+          cors: true
+          path: /v1/certificate
