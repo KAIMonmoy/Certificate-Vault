@@ -57,7 +57,7 @@ module.exports.getCertificates = async (event, context) => {
   const userEmail = event.queryStringParameters.email;
   if (!userEmail) {
     console.log('No email provided in getCertificates');
-    return createErrorResponse(err.statusCode, {
+    return createErrorResponse(400, {
       message: 'email is required',
       requestId: context.awsRequestId,
     });
@@ -76,6 +76,13 @@ module.exports.getCertificates = async (event, context) => {
     const certificates = await documentClient
       .query(certificateQueryParam)
       .promise();
+
+    if (certificates.Count === 0) {
+      return createErrorResponse(404, {
+        message: `No certificates found for ${userEmail}`,
+        requestId: context.awsRequestId,
+      });
+    }
 
     return createResponse(200, certificates.Items);
   } catch (err) {
