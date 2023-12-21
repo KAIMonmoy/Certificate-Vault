@@ -91,3 +91,53 @@ module.exports.getCertificates = async (event, context) => {
     return createErrorResponse(err.statusCode, err);
   }
 };
+
+/**
+ *
+ * @param {import('aws-lambda').APIGatewayProxyEventV2} event
+ * @param {import('aws-lambda').Context} context
+ */
+module.exports.updateCertificate = async (event, context) => {
+  const certificateId = event.pathParameters.certificateId;
+  if (!certificateId) {
+    console.log('No certificateId provided in getCertificates');
+    return createErrorResponse(400, {
+      message: 'certificateId is required',
+      requestId: context.awsRequestId,
+    });
+  }
+
+  const data = JSON.parse(event.body);
+
+  const certificateQueryParam = {
+    TableName: CERTIFICATE_TABLE_NAME,
+    Key: { certificate_id: certificateId },
+    ConditionExpression: 'attribute_exists(certificate_id)',
+    UpdateExpression:
+      'set #certificate_name = :certificate_name, #certificate_provider = :certificate_provider, #certificate_issue_date = :certificate_issue_date, #certificate_expiry_date = :certificate_expiry_date',
+    ExpressionAttributeNames: {
+      '#certificate_name': 'certificate_name',
+      '#certificate_provider': 'certificate_provider',
+      '#certificate_issue_date': 'certificate_issue_date',
+      '#certificate_expiry_date': 'certificate_expiry_date',
+    },
+    ExpressionAttributeValues: {
+      ':certificate_name': data.certificateName,
+      ':certificate_provider': data.certificateProvider,
+      ':certificate_issue_date': data.certificateIssueDate,
+      ':certificate_expiry_date': data.certificateExpiryDate,
+    },
+  };
+
+  try {
+    const updatedCertificate = await documentClient
+      .update(certificateQueryParam)
+      .promise();
+
+    return createResponse(200, updatedCertificate.$response.data);
+  } catch (err) {
+    console.log(err);
+    err.message = err.message || 'Failed to create certificate';
+    return createErrorResponse(err.statusCode, err);
+  }
+};

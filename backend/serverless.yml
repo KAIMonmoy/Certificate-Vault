@@ -82,3 +82,17 @@ functions:
           method: get
           cors: true
           path: /v1/certificate
+  updateCertificate:
+    handler: src/functions/certificates/index.updateCertificate
+    environment:
+      AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "dynamodb:UpdateItem"
+        Resource: !GetAtt certificateTable.Arn
+    events:
+      - http:
+          method: put
+          cors: true
+          path: /v1/certificate/{certificateId}
